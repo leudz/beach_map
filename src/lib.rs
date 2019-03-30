@@ -1,4 +1,4 @@
-//! A BeachMap is really a SlotMap, a data structure used to store elements and access them with an id.
+//! A BeachMap is actually a SlotMap, a data structure used to store elements and access them with an id.
 //! # Exemple:
 //! ```
 //! use beach_map::BeachMap;
@@ -167,7 +167,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
         self.data.push(value);
         id
     }
-    /// Gives to f the future id of the element and insert the result of f to the BeachMap.
+    /// Gives to `f` the future id of the element and insert the result of `f` to the BeachMap.
     pub fn insert_with_id<F: FnOnce(ID<V>) -> T>(&mut self, f: F) -> ID<V> {
         let id = match self.first_available_id {
             Some(index) => {
@@ -204,7 +204,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
         self.data.push(f(id));
         id
     }
-    /// Moves all vec's elements into the BeachMap leaving it empty.
+    /// Moves all `vec`'s elements into the BeachMap leaving it empty.
     pub fn append(&mut self, vec: &mut Vec<T>) -> Vec<ID<V>> {
         let elements_count = vec.len();
         // anchor to the first new index
@@ -255,7 +255,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
                 .collect()
         }
     }
-    // Moves all vec's elements into the BeachMap leaving it empty.\
+    // Moves all `vec`'s elements into the BeachMap leaving it empty.\
     // The IDs are stored in container.
     pub fn append_in(&mut self, vec: &mut Vec<T>, container: &mut Vec<ID<V>>) {
         let elements_count = vec.len();
@@ -307,7 +307,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
             }
         });
     }
-    /// Inserts all elements of iterator into the BeachMap and return an ID for each element.
+    /// Inserts all elements of `iterator` into the BeachMap and return an ID for each element.
     pub fn extend<I: IntoIterator<Item = T>>(&mut self, iterator: I) -> Vec<ID<V>> {
         let iter = iterator.into_iter();
         let mut ids = Vec::with_capacity(iter.size_hint().0);
@@ -316,7 +316,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
         }
         ids
     }
-    /// Returns a reference to the element corresponding to the ID.
+    /// Returns a reference to the element corresponding to `id`.
     #[inline]
     pub fn get(&self, id: ID<V>) -> Option<&T> {
         if let Some(&ID { version, .. }) = self.ids.get(id.index) {
@@ -330,7 +330,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
             None
         }
     }
-    /// Returns a mutable reference to an element corresponding to the ID.
+    /// Returns a mutable reference to an element corresponding to `id`.
     #[inline]
     pub fn get_mut(&mut self, id: ID<V>) -> Option<&mut T> {
         if let Some(&ID { version, .. }) = self.ids.get(id.index) {
@@ -498,7 +498,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
             pred: f,
         }
     }
-    /// Keep in the BeachMap the elements for which f returns true.
+    /// Keep in the BeachMap the elements for which `f` returns true.
     pub fn retain<F: FnMut(ID<V>, &mut T) -> bool>(&mut self, mut f: F) {
         self.filter_out(|id, x| !f(id, x)).for_each(|_| {});
     }
@@ -531,7 +531,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     }
     /// Reserves `additional` ids. Call `use_ids` to add elements.
     /// # Safety
-    /// reverve_ids and use_ids can be called in any order and can be called multiple times.\
+    /// `reverve_ids` and `use_ids` can be called in any order and can be called multiple times.\
     /// But until you have use `additional` ids, adding or removing elements from the BeachMap will break it and other methods may panic.
     pub unsafe fn reserve_ids(&mut self, additional: usize) -> Vec<ID<V>> {
         let start = self.slots.len();
