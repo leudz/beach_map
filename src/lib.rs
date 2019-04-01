@@ -471,7 +471,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     }
     /// Keep in the BeachMap the elements for which `f` returns true.
     pub fn retain<F: FnMut(ID<V>, &mut T) -> bool>(&mut self, mut f: F) {
-        FilterOut::new(self, |id, x| !f(id, x)).for_each(|_| {})
+        FilterOut::new(self, |id, x| !f(id, x)).for_each(drop)
     }
     /// Creates a draining iterator that removes all elements in the BeachMap and yields the removed items.\
     /// The elements are removed even if the iterator is only partially consumed or not consumed at all.
