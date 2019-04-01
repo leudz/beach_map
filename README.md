@@ -25,9 +25,27 @@ assert_eq!(beach.len(), 1);
 beach[id1] = 7;
 assert_eq!(beach[id1], 7);
 
-beach.extend(vec![1, 2, 3]);
+beach.extend(0..4);
 
 assert_eq!(beach.data(), [7, 1, 2, 3]);
+```
+# Rayon
+To use rayon with beach_map, you need rayon in your dependencies and add the parallel feature to beach_map.
+## Exemple:
+```
+use beach_map::BeachMap;
+use rayon::prelude::*;
+
+let mut beach = BeachMap::default();
+let ids = beach.extend(0..500);
+
+beach.par_iter_mut().for_each(|x| {
+    *x *= 2;
+});
+
+for i in 0..ids.len() {
+    assert_eq!(beach[ids[i]], i * 2);
+}
 ```
 
 ## License
