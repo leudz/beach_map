@@ -302,7 +302,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
         if let Some(&ID { version, .. }) = self.ids.get(id.index) {
             if version == id.version {
                 // SAFE index is valid and the versions match
-                Some(unsafe { self.get_unchecked(id.index) })
+                Some(unsafe { self.get_unchecked(id) })
             } else {
                 None
             }
@@ -316,7 +316,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
         if let Some(&ID { version, .. }) = self.ids.get(id.index) {
             if version == id.version {
                 // SAFE index is valid and the versions match
-                Some(unsafe { self.get_unchecked_mut(id.index) })
+                Some(unsafe { self.get_unchecked_mut(id) })
             } else {
                 None
             }
@@ -328,16 +328,16 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     /// # Safety
     /// Should only be used if index is less that ids.len() and the versions match.
     #[inline]
-    pub unsafe fn get_unchecked(&self, index: usize) -> &T {
-        self.data.get_unchecked(self.ids.get_unchecked(index).index)
+    pub unsafe fn get_unchecked(&self, id: ID<V>) -> &T {
+        self.data.get_unchecked(self.ids.get_unchecked(id.index).index)
     }
     /// Returns a mutable reference to an element without checking if the versions match.
     /// # Safety
     /// Should only be used if index is less than ids.len() and the versions match.
     #[inline]
-    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+    pub unsafe fn get_unchecked_mut(&mut self, id: ID<V>) -> &mut T {
         self.data
-            .get_unchecked_mut(self.ids.get_unchecked(index).index)
+            .get_unchecked_mut(self.ids.get_unchecked(id.index).index)
     }
     /// Returns true if the BeachMap contains a value for the specified ID.
     pub fn contains(&self, id: ID<V>) -> bool {
