@@ -22,6 +22,26 @@
 //! assert_eq!(beach.data(), [7, 1, 2, 3]);
 //! ```
 //! You shouldn't assume the order of the elements as any removing operation will shuffle them.
+//!
+//! # Rayon
+//! To use rayon you need rayon in your dependencies and add the parallel feature to beach_map.
+//! ## Exemple:
+//! ```
+//! use beach_map::BeachMap;
+//! # #[cfg(feature = "parallel")]
+//! use rayon::prelude::*;
+//! 
+//! let mut beach = BeachMap::default();
+//! let ids = beach.extend(0..500);
+//! # #[cfg(feature = "parallel")]
+//! beach.par_iter_mut().for_each(|x| {
+//!     *x *= 2;
+//! });
+//! # #[cfg(feature = "parallel")]
+//! for i in 0..ids.len() {
+//!     assert_eq!(beach[ids[i]], i * 2);
+//! }
+//! ```
 
 pub type DefaultVersion = u32;
 
