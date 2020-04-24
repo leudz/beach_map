@@ -1,51 +1,59 @@
-//! A BeachMap is actually a SlotMap, a data structure used to store elements and access them with an id.
-//! # Exemple:
+//! A BeachMap is just a SlotMap, a data structure used to store elements and access them with an id.
+//! # Example:
 //! ```
 //! use beach_map::BeachMap;
-//! 
+//!
 //! let mut beach = BeachMap::default();
 //! let id1 = beach.insert(1);
 //! let id2 = beach.insert(2);
-//! 
+//!
 //! assert_eq!(beach.len(), 2);
 //! assert_eq!(beach[id1], 1);
-//! 
+//!
 //! assert_eq!(beach.remove(id2), Some(2));
 //! assert_eq!(beach.get(id2), None);
 //! assert_eq!(beach.len(), 1);
-//! 
+//!
 //! beach[id1] = 7;
 //! assert_eq!(beach[id1], 7);
-//! 
+//!
 //! beach.extend(1..4);
-//! 
+//!
 //! assert_eq!(beach.data(), [7, 1, 2, 3]);
 //! ```
 //! You shouldn't assume the order of the elements as any removing operation will shuffle them.
 //!
 //! # Rayon
 //! To use rayon with beach_map, you need rayon in your dependencies and add the parallel feature to beach_map.
-//! ## Exemple:
+//! ## Example:
 //! ```
 //! use beach_map::BeachMap;
 //! # #[cfg(feature = "parallel")]
 //! use rayon::prelude::*;
-//! 
+//!
 //! let mut beach = BeachMap::default();
 //! let ids = beach.extend(0..500);
-//! 
+//!
 //! # #[cfg(feature = "parallel")]
 //! beach.par_iter_mut().for_each(|x| {
 //!     *x *= 2;
 //! });
-//! 
+//!
 //! # #[cfg(feature = "parallel")]
 //! for i in 0..ids.len() {
 //!     assert_eq!(beach[ids[i]], i * 2);
 //! }
 //! ```
 
+extern crate alloc;
+
+mod id;
+
+pub use id::ID;
+
 pub type DefaultVersion = u32;
+
+use alloc::vec::Vec;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct LinkedList {
@@ -58,13 +66,6 @@ impl LinkedList {
     fn is_last(&self) -> bool {
         self.tail == self.head
     }
-}
-
-/// Handle to a value inside the BeachMap.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct ID<V> {
-    index: usize,
-    version: V,
 }
 
 // V is the type of the version
@@ -120,7 +121,8 @@ impl<T> BeachMap<DefaultVersion, T> {
     /// let mut beach = BeachMap::with_version::<u8>();
     /// beach.insert(5);
     /// ```
-    pub fn with_version<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>>() -> BeachMap<V, T> {
+    pub fn with_version<V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>>(
+    ) -> BeachMap<V, T> {
         BeachMap {
             ids: Vec::new(),
             slots: Vec::new(),
@@ -137,7 +139,11 @@ impl<T> BeachMap<DefaultVersion, T> {
     /// let mut beach = BeachMap::with_version_and_capacity::<u8>(5);
     /// beach.insert(10);
     /// ```
-    pub fn with_version_and_capacity<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>>(capacity: usize) -> BeachMap<V, T> {
+    pub fn with_version_and_capacity<
+        V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>,
+    >(
+        capacity: usize,
+    ) -> BeachMap<V, T> {
         BeachMap {
             ids: Vec::with_capacity(capacity),
             slots: Vec::with_capacity(capacity),
@@ -147,7 +153,7 @@ impl<T> BeachMap<DefaultVersion, T> {
     }
 }
 
-impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> BeachMap<V, T> {
+impl<V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>, T> BeachMap<V, T> {
     /// Construct a new, empty BeachMap with a custom version type.
     /// # Exemple:
     /// ```
@@ -226,18 +232,18 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
                     self.available_ids = None;
                     // assign ids[index] to the index where the data will be
                     // SAFE slots are always valid ids index
-                    unsafe {self.ids.get_unchecked_mut(head)}.index = start + i;
+                    unsafe { self.ids.get_unchecked_mut(head) }.index = start + i;
                     break;
                 } else {
-                    available_ids.head = unsafe {self.ids.get_unchecked(available_ids.head)}.index;
+                    available_ids.head =
+                        unsafe { self.ids.get_unchecked(available_ids.head) }.index;
                     // assign ids[index] to the index where the data will be
                     // SAFE slots are always valid ids index
-                    unsafe {self.ids.get_unchecked_mut(head)}.index = start + i;
+                    unsafe { self.ids.get_unchecked_mut(head) }.index = start + i;
                 }
             }
         }
-        self.ids
-            .reserve(additional - (self.slots.len() - start));
+        self.ids.reserve(additional - (self.slots.len() - start));
         for i in (self.slots.len() - start)..additional {
             self.slots.push(start + i);
             self.ids.push(ID {
@@ -329,7 +335,8 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     /// Should only be used if index is less that ids.len() and the versions match.
     #[inline]
     pub unsafe fn get_unchecked(&self, id: ID<V>) -> &T {
-        self.data.get_unchecked(self.ids.get_unchecked(id.index).index)
+        self.data
+            .get_unchecked(self.ids.get_unchecked(id.index).index)
     }
     /// Returns a mutable reference to an element without checking if the versions match.
     /// # Safety
@@ -343,7 +350,7 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     pub fn contains(&self, id: ID<V>) -> bool {
         if id.index < self.ids.len() {
             // SAFE all indices lower than len() exist
-            id.version == unsafe {self.ids.get_unchecked(id.index)}.version
+            id.version == unsafe { self.ids.get_unchecked(id.index) }.version
         } else {
             false
         }
@@ -369,7 +376,10 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
                     unsafe { self.ids.get_unchecked_mut(available_ids.tail) }.index = id.index;
                     available_ids.tail = id.index;
                 } else {
-                    self.available_ids = Some(LinkedList {tail: id.index, head: id.index});
+                    self.available_ids = Some(LinkedList {
+                        tail: id.index,
+                        head: id.index,
+                    });
                 }
                 self.slots.swap_remove(data_index);
                 Some(self.data.swap_remove(data_index))
@@ -382,12 +392,12 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     }
     /// Returns an iterator visiting all values in the BeachMap.
     #[inline]
-    pub fn iter(&self) -> std::slice::Iter<T> {
+    pub fn iter(&self) -> core::slice::Iter<T> {
         self.data.iter()
     }
     /// Returns an iterator visiting all values in the BeachMap and let you mutate them.
     #[inline]
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<T> {
+    pub fn iter_mut(&mut self) -> core::slice::IterMut<T> {
         self.data.iter_mut()
     }
     /// Returns an iterator visiting all values in the BeachMap and their ID.
@@ -446,20 +456,23 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     pub fn clear(&mut self) {
         // make sure available_ids is Some to be able to use unreachable_unchecked
         if self.available_ids.is_none() && !self.slots.is_empty() {
-            self.available_ids = Some(LinkedList {tail: unsafe {*self.slots.get_unchecked(0)}, head: unsafe {*self.slots.get_unchecked(0)}});
+            self.available_ids = Some(LinkedList {
+                tail: unsafe { *self.slots.get_unchecked(0) },
+                head: unsafe { *self.slots.get_unchecked(0) },
+            });
         }
         // add all elements of the BeachMap to the available id linked list
         for index in self.slots.drain(..) {
             match &mut self.available_ids {
                 Some(available_ids) => {
                     // SAFE slots are always valid ids indices
-                    unsafe {self.ids.get_unchecked_mut(index)}.version += 1.into();
+                    unsafe { self.ids.get_unchecked_mut(index) }.version += 1.into();
                     // SAFE available_ids are always valid ids indices
-                    unsafe {self.ids.get_unchecked_mut(available_ids.tail)}.index = index;
+                    unsafe { self.ids.get_unchecked_mut(available_ids.tail) }.index = index;
                     available_ids.tail = index;
-                },
+                }
                 // SAFE we made sure it is Some unless slots.is_empty() and in this case the loop is ignored
-                None => unsafe {std::hint::unreachable_unchecked()},
+                None => unsafe { core::hint::unreachable_unchecked() },
             }
         }
         self.data.clear();
@@ -475,23 +488,26 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     }
     /// Creates a draining iterator that removes all elements in the BeachMap and yields the removed items.\
     /// The elements are removed even if the iterator is only partially consumed or not consumed at all.
-    pub fn drain(&mut self) -> std::vec::Drain<T> {
+    pub fn drain(&mut self) -> alloc::vec::Drain<T> {
         // make sure available_ids is Some to be able to use unreachable_unchecked
         if self.available_ids.is_none() && !self.slots.is_empty() {
-            self.available_ids = Some(LinkedList {tail: unsafe {*self.slots.get_unchecked(0)}, head: unsafe {*self.slots.get_unchecked(0)}});
+            self.available_ids = Some(LinkedList {
+                tail: unsafe { *self.slots.get_unchecked(0) },
+                head: unsafe { *self.slots.get_unchecked(0) },
+            });
         }
         // add all elements of the BeachMap to the available id linked list
         for index in self.slots.drain(..) {
             match &mut self.available_ids {
                 Some(available_ids) => {
                     // SAFE slots are always valid ids indices
-                    unsafe {self.ids.get_unchecked_mut(index)}.version += 1.into();
+                    unsafe { self.ids.get_unchecked_mut(index) }.version += 1.into();
                     // SAFE available_ids are always valid ids indices
-                    unsafe {self.ids.get_unchecked_mut(available_ids.tail)}.index = index;
+                    unsafe { self.ids.get_unchecked_mut(available_ids.tail) }.index = index;
                     available_ids.tail = index;
-                },
+                }
                 // SAFE we made sure it is Some unless slots.is_empty() and in this case the loop is ignored
-                None => unsafe {std::hint::unreachable_unchecked()},
+                None => unsafe { core::hint::unreachable_unchecked() },
             }
         }
         self.data.drain(..)
@@ -538,8 +554,8 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> 
     }
 }
 
-impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T>
-    std::ops::Index<ID<V>> for BeachMap<V, T>
+impl<V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>, T>
+    core::ops::Index<ID<V>> for BeachMap<V, T>
 {
     type Output = T;
 
@@ -548,30 +564,30 @@ impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T>
     }
 }
 
-impl<V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T>
-    std::ops::IndexMut<ID<V>> for BeachMap<V, T>
+impl<V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>, T>
+    core::ops::IndexMut<ID<V>> for BeachMap<V, T>
 {
     fn index_mut(&mut self, id: ID<V>) -> &mut T {
         self.get_mut(id).unwrap()
     }
 }
 
-impl<'beach, V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> IntoIterator
-    for &'beach BeachMap<V, T>
+impl<'beach, V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>, T>
+    IntoIterator for &'beach BeachMap<V, T>
 {
     type Item = &'beach T;
-    type IntoIter = std::slice::Iter<'beach, T>;
+    type IntoIter = core::slice::Iter<'beach, T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-impl<'beach, V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> IntoIterator
-    for &'beach mut BeachMap<V, T>
+impl<'beach, V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>, T>
+    IntoIterator for &'beach mut BeachMap<V, T>
 {
     type Item = &'beach mut T;
-    type IntoIter = std::slice::IterMut<'beach, T>;
+    type IntoIter = core::slice::IterMut<'beach, T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
@@ -581,7 +597,7 @@ impl<'beach, V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<
 #[cfg(feature = "parallel")]
 impl<
         'beach,
-        V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>,
+        V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>,
         T: Send + Sync + 'beach,
     > rayon::prelude::IntoParallelRefIterator<'beach> for BeachMap<V, T>
 {
@@ -596,7 +612,7 @@ impl<
 #[cfg(feature = "parallel")]
 impl<
         'beach,
-        V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>,
+        V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>,
         T: Send + 'beach,
     > rayon::prelude::IntoParallelRefMutIterator<'beach> for BeachMap<V, T>
 {
@@ -609,20 +625,27 @@ impl<
 }
 
 pub struct FilterOut<'beach, V, T, F>
-where V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>,
-F: FnMut(ID<V>, &mut T) -> bool {
+where
+    V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>,
+    F: FnMut(ID<V>, &mut T) -> bool,
+{
     beach: &'beach mut BeachMap<V, T>,
     index: usize,
     pred: F,
 }
 
 impl<'beach, V, T, F> FilterOut<'beach, V, T, F>
-where V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>,
-F: FnMut(ID<V>, &mut T) -> bool {
+where
+    V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>,
+    F: FnMut(ID<V>, &mut T) -> bool,
+{
     fn new(beach: &'beach mut BeachMap<V, T>, f: F) -> FilterOut<'beach, V, T, F> {
         // make sure first_available_id is Some to be able to use unreachable_unchecked
         if beach.available_ids.is_none() && !beach.slots.is_empty() {
-            beach.available_ids = Some(LinkedList {tail: unsafe {*beach.slots.get_unchecked(0)}, head: unsafe {*beach.slots.get_unchecked(0)}});
+            beach.available_ids = Some(LinkedList {
+                tail: unsafe { *beach.slots.get_unchecked(0) },
+                head: unsafe { *beach.slots.get_unchecked(0) },
+            });
         }
         FilterOut {
             beach,
@@ -632,31 +655,31 @@ F: FnMut(ID<V>, &mut T) -> bool {
     }
 }
 
-impl<'beach, V, T, F> Iterator for FilterOut<'beach, V, T, F> 
-where V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>,
-F: FnMut(ID<V>, &mut T) -> bool {
+impl<'beach, V, T, F> Iterator for FilterOut<'beach, V, T, F>
+where
+    V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>,
+    F: FnMut(ID<V>, &mut T) -> bool,
+{
     type Item = (ID<V>, T);
 
     fn next(&mut self) -> Option<(ID<V>, T)> {
         let data = &mut self.beach.data;
         while self.index < data.len() {
             // SAFE slots and data have the same length
-            let index = unsafe {*self.beach.slots.get_unchecked(self.index)};
+            let index = unsafe { *self.beach.slots.get_unchecked(self.index) };
             // SAFE slots are always valid ids indices
-            let version = unsafe {self.beach.ids.get_unchecked(index)}.version;
-            let id = ID {
-                index,
-                version,
-            };
-            if (self.pred)(id, unsafe {data.get_unchecked_mut(self.index)}) {
-                unsafe {self.beach.ids.get_unchecked_mut(index)}.version += 1.into();
+            let version = unsafe { self.beach.ids.get_unchecked(index) }.version;
+            let id = ID { index, version };
+            if (self.pred)(id, unsafe { data.get_unchecked_mut(self.index) }) {
+                unsafe { self.beach.ids.get_unchecked_mut(index) }.version += 1.into();
                 match &mut self.beach.available_ids {
                     Some(available_ids) => {
                         // SAFE available_ids are always valid ids indices
-                        unsafe {self.beach.ids.get_unchecked_mut(available_ids.tail)}.index = index;
+                        unsafe { self.beach.ids.get_unchecked_mut(available_ids.tail) }.index =
+                            index;
                         available_ids.tail = index;
-                    },
-                    None => unsafe {std::hint::unreachable_unchecked()},
+                    }
+                    None => unsafe { core::hint::unreachable_unchecked() },
                 };
                 let result = Some((id, data.swap_remove(self.index)));
                 self.beach.slots.swap_remove(self.index);
@@ -674,7 +697,9 @@ pub struct IterID<'beach, V, T> {
     index: usize,
 }
 
-impl<'beach, V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T> Iterator for IterID<'beach, V, T> {
+impl<'beach, V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>, T> Iterator
+    for IterID<'beach, V, T>
+{
     type Item = (ID<V>, &'beach T);
 
     fn next(&mut self) -> Option<(ID<V>, &'beach T)> {
@@ -682,9 +707,15 @@ impl<'beach, V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<
             let data_index = self.index;
             self.index += 1;
             // SAFE slots and data have always the same len
-            let index = unsafe {*self.beach.slots.get_unchecked(data_index)};
+            let index = unsafe { *self.beach.slots.get_unchecked(data_index) };
             // SAFE slots are always valid ids indices
-            Some((ID {index, version: unsafe {self.beach.ids.get_unchecked(index)}.version }, unsafe {self.beach.data.get_unchecked(data_index)}))
+            Some((
+                ID {
+                    index,
+                    version: unsafe { self.beach.ids.get_unchecked(index) }.version,
+                },
+                unsafe { self.beach.data.get_unchecked(data_index) },
+            ))
         } else {
             None
         }
@@ -696,7 +727,12 @@ pub struct IterMutID<'beach, V, T> {
     index: usize,
 }
 
-impl<'beach, V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<u8>, T: 'beach> Iterator for IterMutID<'beach, V, T> {
+impl<
+        'beach,
+        V: Copy + Clone + Default + PartialEq + core::ops::AddAssign + From<u8>,
+        T: 'beach,
+    > Iterator for IterMutID<'beach, V, T>
+{
     type Item = (ID<V>, &'beach mut T);
 
     fn next(&mut self) -> Option<(ID<V>, &'beach mut T)> {
@@ -704,16 +740,22 @@ impl<'beach, V: Copy + Clone + Default + PartialEq + std::ops::AddAssign + From<
             let data_index = self.index;
             self.index += 1;
             // SAFE slots and data have always the same len
-            let index = unsafe {*self.beach.slots.get_unchecked(data_index)};
+            let index = unsafe { *self.beach.slots.get_unchecked(data_index) };
             // SAFE slots are always valid ids indices
             // SAFEISH we are making multiple &mut ref to BeachMap but it is always to different indices
             // and since we have the only &mut ref to BeachMap, it can't reallocate
-            Some((ID {index, version: unsafe {self.beach.ids.get_unchecked(index)}.version }, unsafe {&mut *self.beach.data.as_mut_ptr().add(data_index)}))
+            Some((
+                ID {
+                    index,
+                    version: unsafe { self.beach.ids.get_unchecked(index) }.version,
+                },
+                unsafe { &mut *self.beach.data.as_mut_ptr().add(data_index) },
+            ))
         } else {
             None
         }
     }
-} 
+}
 
 #[cfg(test)]
 mod tests {
@@ -739,10 +781,10 @@ mod tests {
     #[test]
     fn insert_with_id() {
         struct SelfRef {
-            self_ref: ID<u32>
+            self_ref: ID<u32>,
         }
         let mut beach = BeachMap::<u32, _>::default();
-        let id = beach.insert_with_id(|id| SelfRef {self_ref: id});
+        let id = beach.insert_with_id(|id| SelfRef { self_ref: id });
         assert_eq!(beach[id].self_ref, id);
     }
     #[test]
@@ -882,7 +924,13 @@ mod tests {
         assert_eq!(beach.remove(id), Some(5));
         assert_eq!(beach.remove(id), None);
         assert_eq!(beach.ids[id.index].version, id.version + 1);
-        assert_eq!(beach.available_ids, Some(LinkedList {tail: id.index, head: id.index}));
+        assert_eq!(
+            beach.available_ids,
+            Some(LinkedList {
+                tail: id.index,
+                head: id.index
+            })
+        );
         assert_eq!(beach[id2], 10);
         assert_eq!(beach.ids.len(), 2);
         assert_eq!(beach.slots.len(), 1);
@@ -892,7 +940,13 @@ mod tests {
         assert_eq!(beach.remove(id2), Some(10));
         assert_eq!(beach.remove(id2), None);
         assert_eq!(beach.ids[id2.index].version, id2.version + 1);
-        assert_eq!(beach.available_ids, Some(LinkedList {tail: id2.index, head: id.index}));
+        assert_eq!(
+            beach.available_ids,
+            Some(LinkedList {
+                tail: id2.index,
+                head: id.index
+            })
+        );
         assert_eq!(beach.ids.len(), 2);
         assert_eq!(beach.slots.len(), 0);
         assert_eq!(beach.data.len(), 0);
@@ -902,7 +956,13 @@ mod tests {
         assert_eq!(id3.index, id.index);
         assert_eq!(id3.version, id.version + 1);
         assert_eq!(beach.ids[id3.index].version, id3.version);
-        assert_eq!(beach.available_ids, Some(LinkedList {tail: id2.index, head: id2.index}));
+        assert_eq!(
+            beach.available_ids,
+            Some(LinkedList {
+                tail: id2.index,
+                head: id2.index
+            })
+        );
         assert_eq!(beach[id3], 15);
         assert_eq!(beach.ids.len(), 2);
         assert_eq!(beach.slots.len(), 1);
@@ -1023,11 +1083,56 @@ mod tests {
         let mut beach = BeachMap::<u32, _>::default();
         beach.extend(0..5);
         let mut filter_out = beach.filter_out(|_, _| true);
-        assert_eq!(filter_out.next(), Some((ID {index: 0, version: 0}, 0)));
-        assert_eq!(filter_out.next(), Some((ID {index: 4, version: 0}, 4)));
-        assert_eq!(filter_out.next(), Some((ID {index: 3, version: 0}, 3)));
-        assert_eq!(filter_out.next(), Some((ID {index: 2, version: 0}, 2)));
-        assert_eq!(filter_out.next(), Some((ID {index: 1, version: 0}, 1)));
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 0,
+                    version: 0
+                },
+                0
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 4,
+                    version: 0
+                },
+                4
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 3,
+                    version: 0
+                },
+                3
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 2,
+                    version: 0
+                },
+                2
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 1,
+                    version: 0
+                },
+                1
+            ))
+        );
         assert_eq!(filter_out.next(), None);
         let ids = beach.extend(5..10);
         assert_eq!(beach[ids[0]], 5);
@@ -1035,13 +1140,40 @@ mod tests {
         assert_eq!(beach[ids[2]], 7);
         assert_eq!(beach[ids[3]], 8);
         assert_eq!(beach[ids[4]], 9);
-        
+
         let mut beach2 = BeachMap::<u32, _>::default();
         (0u32..6).map(|x| beach2.insert(x)).for_each(|_| {});
         let mut filter_out = beach2.filter_out(|_, &mut x| x % 2 == 0);
-        assert_eq!(filter_out.next(), Some((ID {index: 0, version: 0}, 0)));
-        assert_eq!(filter_out.next(), Some((ID {index: 2, version: 0}, 2)));
-        assert_eq!(filter_out.next(), Some((ID {index: 4, version: 0}, 4)));
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 0,
+                    version: 0
+                },
+                0
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 2,
+                    version: 0
+                },
+                2
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 4,
+                    version: 0
+                },
+                4
+            ))
+        );
         assert_eq!(filter_out.next(), None);
         assert_eq!(beach2.data[0], 5);
         assert_eq!(beach2.data[1], 1);
@@ -1050,9 +1182,36 @@ mod tests {
         let mut beach3 = BeachMap::<u32, _>::default();
         (0u32..6).map(|x| beach3.insert(x)).for_each(|_| {});
         let mut filter_out = beach3.filter_out(|_, &mut x| x % 2 != 0);
-        assert_eq!(filter_out.next(), Some((ID {index: 1, version: 0}, 1)));
-        assert_eq!(filter_out.next(), Some((ID {index: 5, version: 0}, 5)));
-        assert_eq!(filter_out.next(), Some((ID {index: 3, version: 0}, 3)));
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 1,
+                    version: 0
+                },
+                1
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 5,
+                    version: 0
+                },
+                5
+            ))
+        );
+        assert_eq!(
+            filter_out.next(),
+            Some((
+                ID {
+                    index: 3,
+                    version: 0
+                },
+                3
+            ))
+        );
         assert_eq!(filter_out.next(), None);
         assert_eq!(beach3.data[0], 0);
         assert_eq!(beach3.data[1], 4);

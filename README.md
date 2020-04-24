@@ -1,13 +1,13 @@
 # BeachMap
 
-A BeachMap is actually a SlotMap, a data structure used to store elements and access them with an id.
+A BeachMap is just a SlotMap, a data structure used to store elements and access them with an id.
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![LICENSE](https://img.shields.io/badge/license-apache-blue.svg)](LICENSE-APACHE)
 [![Crates.io](https://img.shields.io/crates/v/beach_map.svg)](https://crates.io/crates/beach_map)
 [![Documentation](https://docs.rs/beach_map/badge.svg)](https://docs.rs/beach_map)
 
-## Exemple:
+## Example:
 ```
 use beach_map::BeachMap;
 
@@ -31,7 +31,7 @@ assert_eq!(beach.data(), [7, 1, 2, 3]);
 ```
 # Rayon
 To use rayon with beach_map, you need rayon in your dependencies and add the parallel feature to beach_map.
-## Exemple:
+## Example:
 ```
 use beach_map::BeachMap;
 use rayon::prelude::*;
