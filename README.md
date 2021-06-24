@@ -8,7 +8,7 @@ A BeachMap is just a SlotMap, a data structure used to store elements and access
 [![Documentation](https://docs.rs/beach_map/badge.svg)](https://docs.rs/beach_map)
 
 ## Example:
-```
+```rust
 use beach_map::BeachMap;
 
 let mut beach = BeachMap::default();
@@ -32,7 +32,7 @@ assert_eq!(beach.data(), [7, 1, 2, 3]);
 # Rayon
 To use rayon with beach_map, you need rayon in your dependencies and add the parallel feature to beach_map.
 ## Example:
-```
+```rust
 use beach_map::BeachMap;
 use rayon::prelude::*;
 
