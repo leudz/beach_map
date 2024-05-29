@@ -1,7 +1,7 @@
 #[cfg(feature = "serde")]
 mod serde;
 
-use core::{marker::PhantomData, num::NonZeroU32};
+use core::{cmp::Ordering, marker::PhantomData, num::NonZeroU32};
 
 /// Handle to a value inside the BeachMap.
 pub struct Id<T> {
@@ -20,6 +20,21 @@ impl<T> Eq for Id<T> {}
 impl<T> PartialEq for Id<T> {
     fn eq(&self, other: &Self) -> bool {
         self.data == other.data
+    }
+}
+
+impl<T> PartialOrd for Id<T> {
+    fn partial_cmp(&self, other: &Id<T>) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T> Ord for Id<T> {
+    fn cmp(&self, other: &Id<T>) -> Ordering {
+        match self.index().cmp(&other.index()) {
+            ord @ Ordering::Less | ord @ Ordering::Greater => ord,
+            Ordering::Equal => self.gen().cmp(&other.gen()),
+        }
     }
 }
 
@@ -95,7 +110,7 @@ impl<T> Id<T> {
 }
 
 /// Same as [Id] but without type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UntypedId(Id<()>);
 
 impl core::fmt::Debug for UntypedId {
