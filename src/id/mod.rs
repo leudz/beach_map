@@ -6,7 +6,7 @@ use core::{cmp::Ordering, marker::PhantomData, num::NonZeroU32};
 /// Handle to a value inside the BeachMap.
 pub struct Id<T> {
     data: NonZeroU32,
-    phantom: PhantomData<*const T>,
+    phantom: PhantomData<fn() -> T>,
 }
 
 impl<T> core::hash::Hash for Id<T> {
