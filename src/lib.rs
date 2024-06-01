@@ -74,6 +74,7 @@ impl LinkedList {
 }
 
 // T is the type of the item stored
+#[derive(Clone)]
 pub struct BeachMap<T> {
     // Id.index is either an ids/data index or the index of the next available slot
     slots: Vec<Id<T>>,
