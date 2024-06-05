@@ -109,7 +109,7 @@ impl<T> Id<T> {
     }
 }
 
-/// Same as [Id] but without type.
+/// Same as [`Id`] but without type.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UntypedId(Id<()>);
 

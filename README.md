@@ -1,6 +1,6 @@
 # BeachMap
 
-A BeachMap is just a SlotMap, a data structure used to store elements and access them with an id.
+A BeachMap is a SlotMap, a data structure used to store elements and access them with an id.
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE-MIT)
 [![LICENSE](https://img.shields.io/badge/license-apache-blue.svg)](LICENSE-APACHE)
@@ -11,7 +11,7 @@ A BeachMap is just a SlotMap, a data structure used to store elements and access
 ```rust
 use beach_map::BeachMap;
 
-let mut beach = BeachMap::default();
+let mut beach = BeachMap::new();
 let id1 = beach.insert(1);
 let id2 = beach.insert(2);
 
@@ -36,7 +36,7 @@ To use rayon with beach_map, you need rayon in your dependencies and add the par
 use beach_map::BeachMap;
 use rayon::prelude::*;
 
-let mut beach = BeachMap::default();
+let mut beach = BeachMap::new();
 let ids = beach.extend(0..500);
 
 beach.par_iter_mut().for_each(|x| {

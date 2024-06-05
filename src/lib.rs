@@ -73,7 +73,6 @@ impl LinkedList {
     }
 }
 
-// T is the type of the item stored
 #[derive(Clone)]
 pub struct BeachMap<T> {
     // Id.index is either an ids/data index or the index of the next available slot
@@ -98,12 +97,13 @@ impl<T> Default for BeachMap<T> {
 }
 
 impl<T> BeachMap<T> {
-    /// Constructs a new, empty BeachMap.
+    /// Constructs a new, empty [`BeachMap`].
     ///
     /// # Exemple:
     /// ```
     /// # use beach_map::BeachMap;
-    /// let beach = BeachMap::<u8>::new();
+    /// let beach = BeachMap::new();
+    /// # let _: BeachMap<u32> = beach;
     /// ```
     #[inline]
     pub fn new() -> BeachMap<T> {
@@ -115,16 +115,14 @@ impl<T> BeachMap<T> {
         }
     }
 
-    /// Constructs a new, empty BeachMap with the specified capacity.
+    /// Constructs a new, empty [`BeachMap`] with the specified capacity.
     ///
     /// # Exemple:
     /// ```
     /// # use beach_map::BeachMap;
-    /// let beach = BeachMap::<i32>::with_capacity(5);
+    /// let beach = BeachMap::with_capacity(5);
     /// assert_eq!(beach.len(), 0);
-    /// // or if T can be inferred
-    /// let mut beach = BeachMap::with_capacity(5);
-    /// beach.insert(10);
+    /// # let _: BeachMap<u32> = beach;
     /// ```
     pub fn with_capacity(capacity: usize) -> BeachMap<T> {
         BeachMap {
@@ -140,7 +138,7 @@ impl<T> BeachMap<T> {
     /// Returns a reference to an element without checking if the id is valid.
     ///
     /// # Safety
-    /// Should only be used if index is less that ids.len() and the versions match.
+    /// Should only be used with a valid id while the value is present in the [`BeachMap`].
     #[inline]
     pub unsafe fn get_unchecked(&self, id: Id<T>) -> &T {
         self.data
@@ -150,26 +148,27 @@ impl<T> BeachMap<T> {
     /// Returns a mutable reference to an element without checking if the versions match.
     ///
     /// # Safety
-    /// Should only be used if index is less than ids.len() and the versions match.
+    /// Should only be used with a valid id while the value is present in the [`BeachMap`].
     #[inline]
     pub unsafe fn get_unchecked_mut(&mut self, id: Id<T>) -> &mut T {
         self.data
             .get_unchecked_mut(self.slots.get_unchecked(id.uindex()).uindex())
     }
 
-    /// Returns an iterator visiting all values in the BeachMap.
+    /// Returns an iterator visiting all values in the [`BeachMap`].
     #[inline]
     pub fn iter(&self) -> core::slice::Iter<T> {
         self.data.iter()
     }
 
-    /// Returns an iterator visiting all values in the BeachMap and let you mutate them.
+    /// Returns an iterator visiting all values in the [`BeachMap`] and let you mutate them.
     #[inline]
     pub fn iter_mut(&mut self) -> core::slice::IterMut<T> {
         self.data.iter_mut()
     }
 
-    /// Returns an iterator visiting all values in the BeachMap and their ID.
+    /// Returns an iterator visiting all values in the [`BeachMap`] and their [`Id`].
+    #[inline]
     pub fn iter_with_id(&self) -> IterId<T> {
         IterId {
             beach: self,
@@ -177,7 +176,8 @@ impl<T> BeachMap<T> {
         }
     }
 
-    /// Returns an iterator visiting all values in the BeachMap and their ID, values being mutable.
+    /// Returns an iterator visiting all values in the [`BeachMap`] and their [`Id`], values being mutable.
+    #[inline]
     pub fn iter_mut_with_id(&mut self) -> IterMutId<T> {
         IterMutId {
             index: 0,
@@ -187,18 +187,18 @@ impl<T> BeachMap<T> {
         }
     }
 
-    /// Returns the number of elements the BeachMap can hold without reallocating slots or data.
+    /// Returns the number of elements the [`BeachMap`] can hold without reallocating ids or data.
     pub fn capacity(&self) -> usize {
         self.data.capacity()
     }
 
-    /// Returns the number of elements in the BeachMap.
+    /// Returns the number of elements in the [`BeachMap`].
     #[inline]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
-    /// Returns `true` is the BeachMap contains no elements.
+    /// Returns `true` is the [`BeachMap`] contains no elements.
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
@@ -206,7 +206,7 @@ impl<T> BeachMap<T> {
 
     /// Reserves capacity for at least `additional` more elements.\
     /// The function will reserve space regardless of vacant slots.\
-    /// Meaning some times slots and data may not allocate new space while ids does.
+    /// Meaning some times ids and data may not allocate new space while slots does.
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.slots.reserve(additional);
@@ -214,16 +214,16 @@ impl<T> BeachMap<T> {
         self.data.reserve(additional);
     }
 
-    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the given BeachMap.\
+    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the given [`BeachMap`].\
     /// The function will reserve space regardless of vacant slots.\
-    /// Meaning some times slots and data may not allocate new space while ids does.
+    /// Meaning some times ids and data may not allocate new space while slots does.
     pub fn reserve_exact(&mut self, additional: usize) {
         self.slots.reserve_exact(additional);
         self.ids.reserve_exact(additional);
         self.data.reserve_exact(additional);
     }
 
-    /// Shrinks the capacity of the BeachMap as much as possible.
+    /// Shrinks the capacity of the [`BeachMap`] as much as possible.
     pub fn shrink_to_fit(&mut self) {
         self.slots.shrink_to_fit();
         self.ids.shrink_to_fit();
@@ -276,8 +276,9 @@ impl<T> BeachMap<T> {
         id
     }
 
-    /// Adds an item to the BeachMap returning an ID.\
-    /// If you want to insert a self-referencing value, use `insert_with_id`.
+    /// Adds an item to the [`BeachMap`] returning an [`Id`].\
+    /// If you want to insert a self-referencing value, use [`BeachMap::insert_with_id`].
+    #[inline]
     pub fn insert(&mut self, value: T) -> Id<T> {
         let id = self.next_id();
 
@@ -291,7 +292,26 @@ impl<T> BeachMap<T> {
         id
     }
 
-    /// Gives to `f` the future id of the element and insert the result of `f` to the BeachMap.
+    /// Pass the element's future [`Id`] to `f` and inserts its return value in the [`BeachMap`].
+    ///
+    /// # Example
+    /// ```
+    /// # use beach_map::{BeachMap, Id};
+    /// struct Node {
+    ///     content: String,
+    ///     id: Id<Node>,
+    /// }
+    ///
+    /// let mut beach = BeachMap::new();
+    /// let id = beach.insert_with_id(|id| Node {
+    ///     id,
+    ///     content: String::new(),
+    /// });
+    ///
+    /// let node = &beach[id];
+    /// assert_eq!(node.id, id);
+    /// ```
+    #[track_caller]
     pub fn insert_with_id<F: FnOnce(Id<T>) -> T>(&mut self, f: F) -> Id<T> {
         let id = self.next_id();
 
@@ -301,7 +321,131 @@ impl<T> BeachMap<T> {
         id
     }
 
-    /// Inserts all elements of `iterator` into the BeachMap and return an Id for each element.
+    /// Adds an item to the [`BeachMap`] with the given [`Id`] instead of creating a new one.
+    ///
+    /// # Example:
+    /// ```
+    /// # #[cfg(feature = "serde")]
+    /// # {
+    /// # use beach_map::{BeachMap, Id};
+    /// let mut beach = BeachMap::new();
+    /// let id = beach.insert(1u32);
+    ///
+    /// let values = beach.iter_with_id().collect::<Vec<_>>();
+    /// let json = serde_json::to_string(&values).unwrap();
+    /// drop(beach);
+    ///
+    /// let mut new_beach = BeachMap::new();
+    /// let new_values: Vec<(_, u32)> = serde_json::from_str(&json).unwrap();
+    ///
+    /// for (id, value) in new_values {
+    ///     new_beach.spawn(id, value);
+    /// }
+    ///
+    /// assert_eq!(*new_beach.get(id).unwrap(), 1);
+    /// # }
+    /// ```
+    #[track_caller]
+    pub fn spawn(&mut self, id: Id<T>, value: T) {
+        if id.uindex() < self.slots.len() {
+            // SAFE we checked that it's present
+            let slot = unsafe { self.slots.get_unchecked_mut(id.uindex()) };
+            let index = slot.index();
+
+            if slot.gen() >= id.gen() + 1 {
+                let is_slot_occupied = if slot.gen() >= id.gen() {
+                    self.ids
+                        .get(slot.uindex())
+                        .map(|id| id.index() == id.index())
+                        .unwrap_or(false)
+                } else {
+                    true
+                };
+
+                if is_slot_occupied {
+                    panic!("Trying to override an Id with a greater generation");
+                }
+            }
+
+            *slot = id;
+            slot.set_index(self.ids.len() as u32);
+
+            if let Some(available_ids) = &mut self.available_ids {
+                if available_ids.oldest == id.index() && available_ids.is_last() {
+                    // if slot where spawn is the only one in the available list
+                    self.available_ids = None;
+                } else if available_ids.newest == id.index() {
+                    // if slot where spawn is at the tail of the available list
+                    let mut index_before = available_ids.oldest as usize;
+                    let mut slot_before = unsafe { self.slots.get_unchecked_mut(index_before) };
+
+                    while slot_before.index() != id.index() {
+                        index_before = slot_before.uindex();
+                        slot_before = unsafe { self.slots.get_unchecked_mut(index_before) };
+                    }
+
+                    available_ids.newest = index_before as u32;
+                } else if available_ids.oldest == id.index() {
+                    // if slot where spawn is at the front of the available list
+                    available_ids.oldest = index;
+                } else {
+                    // if slot where spawn is in the middle of the available list
+                    let mut slot_before =
+                        unsafe { self.slots.get_unchecked_mut(available_ids.oldest as usize) };
+
+                    while slot_before.index() != id.index() {
+                        let next_index = slot_before.uindex();
+                        slot_before = unsafe { self.slots.get_unchecked_mut(next_index) };
+                    }
+
+                    slot_before.set_index(index);
+                }
+            }
+
+            if let Some(current_id) = self.ids.get(index as usize) {
+                if current_id.index() == id.index() {
+                    // change ids[slots.last()].index to index
+                    // SAFE slots are always valid index
+                    unsafe {
+                        self.slots
+                            .get_unchecked_mut(self.ids.last().unwrap_unchecked().uindex())
+                            .set_index(index);
+                    }
+
+                    self.ids.swap_remove(index as usize);
+                    self.data.swap_remove(index as usize);
+                }
+            }
+        } else {
+            let range = (self.slots.len() as u32)..id.index();
+            self.slots.extend(range.clone().map(|i| Id::new(i + 1)));
+
+            let mut id = id;
+            id.set_index(self.ids.len() as u32);
+            self.slots.push(id);
+
+            if !range.is_empty() {
+                if let Some(available_ids) = &mut self.available_ids {
+                    let slot =
+                        unsafe { self.slots.get_unchecked_mut(available_ids.newest as usize) };
+
+                    slot.set_index(range.start);
+
+                    available_ids.newest = range.end - 1;
+                } else {
+                    self.available_ids = Some(LinkedList {
+                        oldest: range.start,
+                        newest: range.end - 1,
+                    });
+                }
+            }
+        }
+
+        self.ids.push(id);
+        self.data.push(value);
+    }
+
+    /// Inserts all elements of `iterator` into the [`BeachMap`] and returns an [`Id`] for each element.
     pub fn extend<'beach>(
         &'beach mut self,
         iterator: impl IntoIterator<Item = T> + 'beach,
@@ -346,7 +490,7 @@ impl<T> BeachMap<T> {
         }
     }
 
-    /// Returns true if the BeachMap contains a value for the specified ID.
+    /// Returns true if the [`BeachMap`] contains a value for the specified [`Id`].
     pub fn contains(&self, id: Id<T>) -> bool {
         let index = id.uindex();
 
@@ -357,7 +501,7 @@ impl<T> BeachMap<T> {
         }
     }
 
-    /// Removes an element from the BeachMap and returns it.
+    /// Removes an element from the [`BeachMap`] and returns it.
     pub fn remove(&mut self, id: Id<T>) -> Option<T> {
         let slot_index = id.uindex();
 
@@ -412,13 +556,13 @@ impl<T> BeachMap<T> {
         value
     }
 
-    /// Clears the BeachMap, removing all values.\
+    /// Clears the [`BeachMap`], removing all values.\
     /// It does not affet the capacity.
     pub fn clear(&mut self) {
         drop(self.drain());
     }
 
-    /// Keep in the BeachMap the elements for which `f` returns true.
+    /// Keeps in the [`BeachMap`] the elements for which `f` returns true.
     pub fn retain<F: FnMut(Id<T>, &mut T) -> bool>(&mut self, mut f: F) {
         let BeachMap {
             slots,
@@ -461,7 +605,7 @@ impl<T> BeachMap<T> {
         }
     }
 
-    /// Creates a draining iterator that removes all elements in the BeachMap and yields the removed items.\
+    /// Creates a draining iterator that removes all elements in the [`BeachMap`] and yields the removed items.\
     /// The elements are removed even if the iterator is only partially consumed or not consumed at all.
     pub fn drain(&mut self) -> impl Iterator<Item = T> + '_ {
         if self.is_empty() {
@@ -507,7 +651,7 @@ impl<T> BeachMap<T> {
         self.data.drain(..)
     }
 
-    /// Creates a draining iterator that removes all elements in the BeachMap and yields the removed items along with their ID.\
+    /// Creates a draining iterator that removes all elements in the [`BeachMap`] and yields the removed items along with their [`Id`].\
     /// Only the elements consumed by the iterator are removed.
     pub fn drain_with_id(&mut self) -> impl Iterator<Item = (Id<T>, T)> + '_ {
         self.ids.drain(..).zip(self.data.drain(..))
@@ -517,12 +661,14 @@ impl<T> BeachMap<T> {
 impl<T> core::ops::Index<Id<T>> for BeachMap<T> {
     type Output = T;
 
+    #[track_caller]
     fn index(&self, id: Id<T>) -> &T {
         self.get(id).unwrap()
     }
 }
 
 impl<T> core::ops::IndexMut<Id<T>> for BeachMap<T> {
+    #[track_caller]
     fn index_mut(&mut self, id: Id<T>) -> &mut T {
         self.get_mut(id).unwrap()
     }
@@ -901,5 +1047,122 @@ mod tests {
         assert_eq!(beach[ids[3]], 7);
         // check that we are re-using the slots
         assert_eq!(beach.slots.len(), 4);
+    }
+
+    #[test]
+    fn spawn_start_of_available_ids() {
+        let mut beach = BeachMap::default();
+        let ids = beach.extend(0..4);
+
+        for &id in &ids {
+            beach.remove(id);
+        }
+
+        beach.spawn(ids[0], 10);
+        let id2 = beach.insert(20);
+        let id3 = beach.insert(30);
+        let id4 = beach.insert(40);
+        let id5 = beach.insert(5);
+
+        assert_eq!(beach[ids[0]], 10);
+        assert_eq!(beach[id2], 20);
+        assert_eq!(beach[id3], 30);
+        assert_eq!(beach[id4], 40);
+        assert_eq!(beach[id5], 5);
+    }
+
+    #[test]
+    fn spawn_end_of_available_ids() {
+        let mut beach = BeachMap::default();
+        let ids = beach.extend(0..4);
+
+        for &id in &ids {
+            beach.remove(id);
+        }
+
+        beach.spawn(ids[3], 10);
+        let id2 = beach.insert(20);
+        let id3 = beach.insert(30);
+        let id4 = beach.insert(40);
+        let id5 = beach.insert(5);
+
+        assert_eq!(beach[ids[3]], 10);
+        assert_eq!(beach[id2], 20);
+        assert_eq!(beach[id3], 30);
+        assert_eq!(beach[id4], 40);
+        assert_eq!(beach[id5], 5);
+    }
+
+    #[test]
+    fn spawn_middle_of_available_ids() {
+        let mut beach = BeachMap::default();
+        let ids = beach.extend(0..4);
+
+        for &id in &ids {
+            beach.remove(id);
+        }
+
+        beach.spawn(ids[1], 10);
+        let id2 = beach.insert(20);
+        let id3 = beach.insert(30);
+        let id4 = beach.insert(40);
+        let id5 = beach.insert(5);
+
+        assert_eq!(beach[ids[1]], 10);
+        assert_eq!(beach[id2], 20);
+        assert_eq!(beach[id3], 30);
+        assert_eq!(beach[id4], 40);
+        assert_eq!(beach[id5], 5);
+    }
+
+    #[test]
+    fn spawn_only_available_ids() {
+        let mut beach = BeachMap::default();
+        let id = beach.insert(0);
+        beach.remove(id);
+
+        beach.spawn(id, 10);
+        let id2 = beach.insert(20);
+
+        assert_eq!(beach[id], 10);
+        assert_eq!(beach[id2], 20);
+    }
+
+    #[test]
+    fn spawn_past_last_id_no_available_ids() {
+        let mut beach = BeachMap::default();
+        let ids = beach.extend(0..4);
+        drop(beach);
+
+        let mut beach = BeachMap::new();
+        beach.spawn(ids[2], 30);
+        let id1 = beach.insert(10);
+        let id2 = beach.insert(20);
+        let id4 = beach.insert(40);
+        assert_eq!(beach[ids[2]], 30);
+        assert_eq!(beach[id1], 10);
+        assert_eq!(beach[id2], 20);
+        assert_eq!(beach[id4], 40);
+    }
+
+    #[test]
+    fn spawn_past_last_id_available_ids() {
+        let mut beach = BeachMap::default();
+        let ids = beach.extend(0..4);
+        drop(beach);
+
+        let mut beach = BeachMap::new();
+        let id1 = beach.insert(1);
+        let id2 = beach.insert(2);
+        beach.remove(id1);
+        beach.remove(id2);
+        beach.spawn(ids[3], 30);
+        let id1 = beach.insert(10);
+        let id2 = beach.insert(20);
+        let id4 = beach.insert(40);
+        assert_eq!(beach[ids[3]], 30);
+        assert_eq!(beach[id1], 10);
+        assert_eq!(beach[id2], 20);
+        assert_eq!(beach[id4], 40);
     }
 }
