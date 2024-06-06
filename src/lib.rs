@@ -377,10 +377,12 @@ impl<T> BeachMap<T> {
                 } else if available_ids.newest == id.index() {
                     // if slot where spawn is at the tail of the available list
                     let mut index_before = available_ids.oldest as usize;
+                    // SAFE available ids are always valid indices into slots array
                     let mut slot_before = unsafe { self.slots.get_unchecked_mut(index_before) };
 
                     while slot_before.index() != id.index() {
                         index_before = slot_before.uindex();
+                        // SAFE available ids are always valid indices into slots array
                         slot_before = unsafe { self.slots.get_unchecked_mut(index_before) };
                     }
 
@@ -390,11 +392,13 @@ impl<T> BeachMap<T> {
                     available_ids.oldest = index;
                 } else {
                     // if slot where spawn is in the middle of the available list
+                    // SAFE available ids are always valid indices into slots array
                     let mut slot_before =
                         unsafe { self.slots.get_unchecked_mut(available_ids.oldest as usize) };
 
                     while slot_before.index() != id.index() {
                         let next_index = slot_before.uindex();
+                        // SAFE available ids are always valid indices into slots array
                         slot_before = unsafe { self.slots.get_unchecked_mut(next_index) };
                     }
 
@@ -426,6 +430,7 @@ impl<T> BeachMap<T> {
 
             if !range.is_empty() {
                 if let Some(available_ids) = &mut self.available_ids {
+                    // SAFE available ids are always valid indices into slots array
                     let slot =
                         unsafe { self.slots.get_unchecked_mut(available_ids.newest as usize) };
 
@@ -539,6 +544,7 @@ impl<T> BeachMap<T> {
 
         if let Some(available_ids) = &mut self.available_ids {
             // if the linked list isn't empty, add slot_index to it
+            // SAFE available ids are always valid indices into slots array
             unsafe {
                 self.slots
                     .get_unchecked_mut(available_ids.newest as usize)
