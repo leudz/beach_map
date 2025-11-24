@@ -590,23 +590,36 @@ impl<T> BeachMap<T> {
                 continue;
             }
 
+            let last_slot =
+                unsafe { slots.get_unchecked_mut(ids.get_unchecked(ids.len() - 1).uindex()) };
+            last_slot.set_index(i as u32);
+
             ids.swap_remove(i);
             data.swap_remove(i);
 
-            let available_ids = available_ids.get_or_insert_with(|| LinkedList {
-                oldest: id.index(),
-                newest: id.index(),
-            });
-
             // SAFE ids are always valid slot indices
             let slot = unsafe { slots.get_unchecked_mut(id.uindex()) };
-
             slot.increment_gen();
 
-            if slot.gen() < 255 {
-                slot.set_index(available_ids.newest);
+            if slot.gen() == 255 {
+                continue;
+            }
+
+            if let Some(available_ids) = available_ids {
+                // if the linked list isn't empty, add slot_index to it
+                // SAFE available ids are always valid indices into slots array
+                unsafe {
+                    slots
+                        .get_unchecked_mut(available_ids.newest as usize)
+                        .set_index(id.index());
+                }
 
                 available_ids.newest = id.index();
+            } else {
+                *available_ids = Some(LinkedList {
+                    oldest: id.index(),
+                    newest: id.index(),
+                });
             }
         }
     }
@@ -1247,5 +1260,27 @@ mod tests {
         assert_eq!(beach[id1], 10);
         assert_eq!(beach[id2], 20);
         assert_eq!(beach[id4], 40);
+    }
+
+    #[test]
+    fn retain() {
+        let mut beach = BeachMap::default();
+        let ids = beach.extend(0..4);
+        // Makes sure we handle retain with some available ids already present
+        beach.remove(ids[0]);
+
+        beach.retain(|_id, i| *i % 2 == 0);
+        assert_eq!(beach.get(ids[1]), None);
+        assert_eq!(beach[ids[2]], 2);
+        assert_eq!(beach.get(ids[3]), None);
+
+        // Makes sure we can insert new elements
+        let new_ids = beach.extend(4..8);
+        assert_eq!(beach[new_ids[0]], 4);
+        assert_eq!(beach[new_ids[1]], 5);
+        assert_eq!(beach[new_ids[2]], 6);
+        assert_eq!(beach[new_ids[3]], 7);
+        // check that we are re-using the slots
+        assert_eq!(beach.slots.len(), 5);
     }
 }
