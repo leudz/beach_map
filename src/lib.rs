@@ -157,19 +157,19 @@ impl<T> BeachMap<T> {
 
     /// Returns an iterator visiting all values in the [`BeachMap`].
     #[inline]
-    pub fn iter(&self) -> core::slice::Iter<T> {
+    pub fn iter(&'_ self) -> core::slice::Iter<'_, T> {
         self.data.iter()
     }
 
     /// Returns an iterator visiting all values in the [`BeachMap`] and let you mutate them.
     #[inline]
-    pub fn iter_mut(&mut self) -> core::slice::IterMut<T> {
+    pub fn iter_mut(&'_ mut self) -> core::slice::IterMut<'_, T> {
         self.data.iter_mut()
     }
 
     /// Returns an iterator visiting all values in the [`BeachMap`] and their [`Id`].
     #[inline]
-    pub fn iter_with_id(&self) -> IterId<T> {
+    pub fn iter_with_id(&'_ self) -> IterId<'_, T> {
         IterId {
             beach: self,
             index: 0,
@@ -178,7 +178,7 @@ impl<T> BeachMap<T> {
 
     /// Returns an iterator visiting all values in the [`BeachMap`] and their [`Id`], values being mutable.
     #[inline]
-    pub fn iter_mut_with_id(&mut self) -> IterMutId<T> {
+    pub fn iter_mut_with_id(&'_ mut self) -> IterMutId<'_, T> {
         IterMutId {
             index: 0,
             slots: &self.ids,
@@ -352,7 +352,7 @@ impl<T> BeachMap<T> {
             let slot = unsafe { self.slots.get_unchecked_mut(id.uindex()) };
             let index = slot.index();
 
-            if slot.gen() >= id.gen() + 1 {
+            if slot.gen() > id.gen() {
                 let is_slot_occupied = if slot.gen() >= id.gen() {
                     self.ids
                         .get(slot.uindex())

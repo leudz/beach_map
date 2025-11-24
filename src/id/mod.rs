@@ -87,7 +87,7 @@ impl<T> Id<T> {
     }
 
     pub(crate) fn set_index(&mut self, new_index: u32) {
-        self.data = unsafe { NonZeroU32::new_unchecked(new_index + 1 | (self.gen() << 24)) };
+        self.data = unsafe { NonZeroU32::new_unchecked((new_index + 1) | (self.gen() << 24)) };
     }
 
     pub(crate) fn gen(self) -> u32 {
@@ -97,7 +97,7 @@ impl<T> Id<T> {
 
     pub(crate) fn increment_gen(&mut self) {
         self.data =
-            unsafe { NonZeroU32::new_unchecked(self.index() + 1 | ((self.gen() + 1) << 24)) };
+            unsafe { NonZeroU32::new_unchecked((self.index() + 1) | ((self.gen() + 1) << 24)) };
     }
 
     /// Returns a handle without the generic type.
