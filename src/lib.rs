@@ -658,8 +658,48 @@ impl<T> BeachMap<T> {
     }
 
     /// Creates a draining iterator that removes all elements in the [`BeachMap`] and yields the removed items along with their [`Id`].\
-    /// Only the elements consumed by the iterator are removed.
+    /// The elements are removed even if the iterator is only partially consumed or not consumed at all.
     pub fn drain_with_id(&mut self) -> impl Iterator<Item = (Id<T>, T)> + '_ {
+        if self.is_empty() {
+            return self.ids.drain(..).zip(self.data.drain(..));
+        }
+
+        let mut list = {
+            // SAFE ids is not empty
+            let index = unsafe { self.ids.last().unwrap_unchecked().index() };
+
+            LinkedList {
+                newest: index,
+                oldest: index,
+            }
+        };
+
+        // add all elements of the BeachMap to the available id linked list
+        for id in self.ids.iter().rev() {
+            // SAFE ids are always valid slot indices
+            let slot = unsafe { self.slots.get_unchecked_mut(id.uindex()) };
+
+            slot.increment_gen();
+
+            if slot.gen() < 255 {
+                slot.set_index(list.oldest);
+
+                list.oldest = id.index();
+            }
+        }
+
+        if let Some(available_ids) = &mut self.available_ids {
+            // we merge the two linked list
+
+            // SAFE ids are always valid slot indices
+            let slot = unsafe { self.slots.get_unchecked_mut(available_ids.newest as usize) };
+            slot.set_index(list.oldest);
+
+            available_ids.newest = list.newest;
+        } else {
+            self.available_ids = Some(list);
+        }
+
         self.ids.drain(..).zip(self.data.drain(..))
     }
 }
@@ -1036,9 +1076,10 @@ mod tests {
     fn drain() {
         let mut beach = BeachMap::default();
         let ids = beach.extend(0..4);
-        // make sure we handle draining with some available ids already present
+        // Makes sure we handle draining with some available ids already present
         beach.remove(ids[0]);
 
+        // Makes sure the iterator returns the expected ids
         let mut drain = beach.drain();
         assert_eq!(drain.next(), Some(3));
         assert_eq!(drain.next(), Some(1));
@@ -1046,6 +1087,42 @@ mod tests {
         assert_eq!(drain.next(), None);
         drop(drain);
 
+        // Makes sure the removed ids are not accessible anymore
+        assert_eq!(beach.get(ids[1]), None);
+        assert_eq!(beach.get(ids[2]), None);
+        assert_eq!(beach.get(ids[3]), None);
+
+        // Makes sure we can insert new elements
+        let ids = beach.extend(4..8);
+        assert_eq!(beach[ids[0]], 4);
+        assert_eq!(beach[ids[1]], 5);
+        assert_eq!(beach[ids[2]], 6);
+        assert_eq!(beach[ids[3]], 7);
+        // check that we are re-using the slots
+        assert_eq!(beach.slots.len(), 4);
+    }
+
+    #[test]
+    fn drain_with_id() {
+        let mut beach = BeachMap::default();
+        let ids = beach.extend(0..4);
+        // Makes sure we handle draining with some available ids already present
+        beach.remove(ids[0]);
+
+        // Makes sure the iterator returns the expected ids
+        let mut drain = beach.drain_with_id();
+        assert_eq!(drain.next(), Some((ids[3], 3)));
+        assert_eq!(drain.next(), Some((ids[1], 1)));
+        assert_eq!(drain.next(), Some((ids[2], 2)));
+        assert_eq!(drain.next(), None);
+        drop(drain);
+
+        // Makes sure the removed ids are not accessible anymore
+        assert_eq!(beach.get(ids[1]), None);
+        assert_eq!(beach.get(ids[2]), None);
+        assert_eq!(beach.get(ids[3]), None);
+
+        // Makes sure we can insert new elements
         let ids = beach.extend(4..8);
         assert_eq!(beach[ids[0]], 4);
         assert_eq!(beach[ids[1]], 5);
